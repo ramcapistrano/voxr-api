@@ -9,6 +9,7 @@
 
 import sys
 import scipy.io.wavfile
+from utils import get_vokaturi_lib
 
 sys.path.append("app/OpenVokaturi/api")
 import Vokaturi
@@ -16,7 +17,7 @@ import Vokaturi
 
 def extract_emotions(file_path):
 
-    Vokaturi.load("app/OpenVokaturi/lib/Vokaturi_win32.dll")
+    Vokaturi.load(get_vokaturi_lib())
 
     (sample_rate, samples) = scipy.io.wavfile.read(file_path)
 

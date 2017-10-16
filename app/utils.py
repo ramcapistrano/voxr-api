@@ -23,6 +23,11 @@ def generate_new_file_path(username, file_path):
     return new_file_path
 
 
+def get_vokaturi_lib():
+    vokaturi_lib = config.get('VokaturiLib', 'VOKATURI_LIB')
+    return vokaturi_lib
+
+
 def get_file_name(file_path):
     file_name = os.path.basename(file_path)
     return file_name
