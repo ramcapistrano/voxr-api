@@ -25,7 +25,7 @@ def create_user():
 
         val = validate(username, password, first_name, last_name, email)
         if val is not None:
-            return jsonify({'error': val[0]}), val[1]
+            return jsonify(val[0]), val[1]
 
         # Encypt password
         encrypted_password = bcrypt_sha256.encrypt(password)
@@ -34,17 +34,17 @@ def create_user():
 
         user_dao.save(user)
 
-        return jsonify({'message': 'User successfully created'}), 201
+        return jsonify('User successfully created'), 201
 
     except KeyError as ke:
         user_sessionDB.rollback()
-        return jsonify({'error': 'Attribute ' + ke.args[0] + ' missing!'}), 400
+        return jsonify('Attribute ' + ke.args[0] + ' missing!'), 400
 
     except IntegrityError as ie:
         user_sessionDB.rollback()
         error = ie.args[0].split("\"")
         print error[1]
-        return jsonify({'error': error[1]}), 500
+        return jsonify(error[1]), 500
 
 
 # Get User
@@ -52,7 +52,7 @@ def create_user():
 def get_user(user_id):
     temp_user = user_dao.get(user_id)
     if temp_user is None:
-        return jsonify({'error': 'User id doesn\'t exists!'}), 404
+        return jsonify('User id doesn\'t exists!'), 404
 
     else:
         user = temp_user.serialize
@@ -64,12 +64,12 @@ def get_user(user_id):
 def user_records(user_id):
     temp_user = user_dao.get(user_id)
     if temp_user is None:
-        return jsonify({'error': 'User id doesn\'t exists!'}), 404
+        return jsonify('User id doesn\'t exists!'), 404
     else:
         user = temp_user.serialize
         if request.method == 'GET':
             records = record_dao.get_all(user_id)
-            return jsonify({'records': records}), 200
+            return jsonify(records), 200
         elif request.method == 'POST':
             try:
                 wav_base64 = request.json["wav_file"]
@@ -84,17 +84,17 @@ def user_records(user_id):
 
                 record = Record(user['id'], neutrality, happiness, sadness, anger, fear, new_file_path)
                 record_dao.save(record)
-                return jsonify({'message': 'Record successfully created', 'result': emotions}), 201
+                return jsonify(emotions), 201
 
             except KeyError as ke:
                 record_sessionDB.rollback()
-                return jsonify({'error': 'Attribute ' + ke.args[0] + ' missing!'}), 400
+                return jsonify('Attribute ' + ke.args[0] + ' missing!'), 400
 
             except IntegrityError as ie:
                 record_sessionDB.rollback()
                 error = ie.args[0].split("\"")
                 print error[1]
-                return jsonify({'error': error[1]}), 500
+                return jsonify(error[1]), 500
 
 
 # Get User Record
@@ -102,17 +102,17 @@ def user_records(user_id):
 def user_record(user_id, record_id):
     temp_user = user_dao.get(user_id)
     if temp_user is None:
-        return jsonify({'error': 'User id doesn\'t exists!'}), 404
+        return jsonify('User id doesn\'t exists!'), 404
     else:
         if request.method == 'GET':
             record = record_dao.get(user_id, record_id)
             if record is not None:
                 return jsonify(record.serialize), 200
             else:
-                return jsonify({'error': 'Record id doesn\'t exists!'}), 404
+                return jsonify('Record id doesn\'t exists!'), 404
         elif request.method == 'DELETE':
             is_updated = record_dao.update(user_id, record_id)
             if is_updated is True:
-                return jsonify({'message': 'Record has been removed'}), 202
+                return jsonify('Record has been removed'), 202
             else:
-                return jsonify({'error': 'Record id doesn\'t exists!'}), 404
+                return jsonify('Record id doesn\'t exists!'), 404
