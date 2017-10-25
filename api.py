@@ -25,12 +25,13 @@ def login():
                 print 'Login successful'
                 return jsonify(user.serialize), 200
             else:
-                return jsonify({'error': 'Invalid credentials'}), 401
+                return jsonify('Invalid credentials'), 401
 
-        return jsonify({'error': 'User do not exist'}), 400
+        return jsonify('User do not exist'), 400
     except KeyError as ke:
-        return jsonify({'error': 'Attribute ' + ke.args[0] + ' missing!'}), 400
+        return jsonify('Attribute ' + ke.args[0] + ' missing!'), 400
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='localhost', port=5001, threaded=True)
+    # app.run(debug=True, host='localhost', port=5001, threaded=True)
+    app.run(debug=True, host='0.0.0.0', port=9000, threaded=True)
