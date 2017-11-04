@@ -4,10 +4,12 @@ from sqlalchemy.exc import IntegrityError
 
 import dao as user_dao
 from app.records import dao as record_dao
+from app.password_resets import dao as password_reset_dao
 from app.records.model import Record, SessionDB as record_sessionDB
+from app.password_resets.model import PasswordReset, SessionDB as passwordreset_sessionDB
 from model import User, SessionDB as user_sessionDB
 from validator import validate
-from app.utils import upload_wav_file, generate_new_file_path
+from app.utils import upload_wav_file, generate_new_file_path, generate_email_code
 from app.open_vokaturi import extract_emotions
 
 UserResource = Blueprint('UserResource', __name__)
@@ -38,10 +40,12 @@ def create_user():
 
     except KeyError as ke:
         user_sessionDB.rollback()
+	user_sessionDB.close()
         return jsonify('Attribute ' + ke.args[0] + ' missing!'), 400
 
     except IntegrityError as ie:
         user_sessionDB.rollback()
+	user_sessionDB.close()
         error = ie.args[0].split("\"")
         print error[1]
         return jsonify(error[1]), 500
@@ -59,6 +63,102 @@ def get_user(user_id):
         return jsonify(user), 200
 
 
+# Forgot Password
+@UserResource.route('/voxr/api/password/forgot', methods=['POST'])
+def send_forgot_email():
+    try:
+        email = request.json['email']
+        temp_user = user_dao.get_by_email(email)
+        if temp_user is None:
+            return jsonify('User with this email doesn\'t exists!'), 400
+
+        else:
+            user = temp_user.serialize
+            code = generate_email_code(user['first_name'], user['email'])
+
+            temp_pr = password_reset_dao.get(user['id'])
+            if temp_pr is None:
+                pr = PasswordReset(user['id'], code)
+                password_reset_dao.save(pr)
+                return jsonify('Email sent!'), 202
+            else:
+                is_updated = password_reset_dao.update(user['id'], code)
+                if is_updated is True:
+                    return jsonify('Email sent!'), 202
+                else:
+                    return jsonify('User with this email doesn\'t exists!'), 400
+
+    except KeyError as ke:
+        passwordreset_sessionDB.rollback()
+        return jsonify('Attribute ' + ke.args[0] + ' missing!'), 400
+
+
+# Verify Reset Code
+@UserResource.route('/voxr/api/password/verify', methods=['POST'])
+def verify_code():
+    try:
+        email = request.json['email']
+        code = request.json['code']
+        temp_user = user_dao.get_by_email(email)
+        if temp_user is None:
+            return jsonify('User with this email doesn\'t exists!'), 400
+
+        else:
+            user = temp_user.serialize
+
+            temp_pr = password_reset_dao.get(user['id'])
+            if temp_pr is None:
+                return jsonify('No password reset request for this user!'), 400
+            else:
+                pr = temp_pr.serialize
+                if pr['code'] == code:
+                    return jsonify('Verification code match!'), 200
+                else:
+                    return jsonify('Invalid verification code!'), 400
+
+    except KeyError as ke:
+        passwordreset_sessionDB.rollback()
+        return jsonify('Attribute ' + ke.args[0] + ' missing!'), 400
+
+
+# Reset Password
+@UserResource.route('/voxr/api/password/reset', methods=['POST'])
+def reset_password():
+    try:
+        email = request.json['email']
+        code = request.json['code']
+        password = request.json['password']
+
+        temp_user = user_dao.get_by_email(email)
+        if temp_user is None:
+            return jsonify('User with this email doesn\'t exists!'), 400
+
+        else:
+            user = temp_user.serialize
+
+            temp_pr = password_reset_dao.get(user['id'])
+            if temp_pr is None:
+                return jsonify('No password reset request for this user!'), 400
+            else:
+                pr = temp_pr.serialize
+                if pr['code'] == code:
+
+                    # Encypt password
+                    encrypted_password = bcrypt_sha256.encrypt(password)
+                    temp_user.password = encrypted_password
+
+                    user_dao.update(temp_user)
+                    password_reset_dao.delete(temp_pr)
+
+                    return jsonify('Password reset successful!'), 202
+                else:
+                    return jsonify('Invalid verification code!'), 400
+
+    except KeyError as ke:
+        passwordreset_sessionDB.rollback()
+        return jsonify('Attribute ' + ke.args[0] + ' missing!'), 400
+
+
 # Create and Get User Records
 @UserResource.route('/voxr/api/users/<int:user_id>/records', methods=['GET', 'POST'])
 def user_records(user_id):
@@ -71,11 +171,12 @@ def user_records(user_id):
             records = record_dao.get_all(user_id)
             return jsonify(records), 200
         elif request.method == 'POST':
-            try:
+           try:
                 wav_base64 = request.json["wav_file"]
                 file_path = upload_wav_file(wav_base64, user['username'])
                 new_file_path = generate_new_file_path(user['username'], file_path)
                 emotions = extract_emotions(file_path)
+                user_emotion = max(emotions.iterkeys(), key=(lambda key: emotions[key]))
                 neutrality = emotions['neutrality']
                 happiness = emotions['happiness']
                 sadness = emotions['sadness']
@@ -84,14 +185,16 @@ def user_records(user_id):
 
                 record = Record(user['id'], neutrality, happiness, sadness, anger, fear, new_file_path)
                 record_dao.save(record)
-                return jsonify(emotions), 201
+                return jsonify({'user_emotion': user_emotion, 'emotion': emotions}), 201
 
-            except KeyError as ke:
+           except KeyError as ke:
                 record_sessionDB.rollback()
+		record_sessionDB.close()
                 return jsonify('Attribute ' + ke.args[0] + ' missing!'), 400
 
-            except IntegrityError as ie:
+           except IntegrityError as ie:
                 record_sessionDB.rollback()
+		record_sessionDB.close()
                 error = ie.args[0].split("\"")
                 print error[1]
                 return jsonify(error[1]), 500

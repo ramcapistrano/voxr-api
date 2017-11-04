@@ -30,13 +30,20 @@ class Record(Base):
     # Return object data in easily serializeable format
     @property
     def serialize(self):
-        return {
-            'id': self.id,
+        emotion = {
             'neutrality': self.neutrality,
             'happiness': self.happiness,
             'sadness': self.sadness,
             'anger': self.anger,
-            'fear': self.fear,
+            'fear': self.fear
+        }
+
+        user_emotion = max(emotion.iterkeys(), key=(lambda key: emotion[key]))
+
+        return {
+            'id': self.id,
+            'emotion': emotion,
+            'user_emotion': user_emotion,
             'file_path': self.file_path,
             'date_created': self.date_created
         }

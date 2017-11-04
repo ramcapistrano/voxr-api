@@ -9,15 +9,20 @@
 
 import sys
 import scipy.io.wavfile
+import soundfile as sf
 from utils import get_vokaturi_lib
 
-sys.path.append("app/OpenVokaturi/api")
-import Vokaturi
+from app.OpenVokaturi import Vokaturi
+# sys.path.append("app/OpenVokaturi/api")
+# import Vokaturi
 
 
 def extract_emotions(file_path):
 
     Vokaturi.load(get_vokaturi_lib())
+
+    sf_data, sf_sample_rate = sf.read(file_path, dtype='int16')
+    sf.write(file_path, sf_data, 44100, 'PCM_16')
 
     (sample_rate, samples) = scipy.io.wavfile.read(file_path)
 

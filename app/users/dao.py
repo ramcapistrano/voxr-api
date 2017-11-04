@@ -32,6 +32,20 @@ def update(user):
     )
     updated_user.first_name = user.first_name
     updated_user.last_name = user.last_name
+    updated_user.password = user.password
     db_session.commit()
     db_session.close()
     return True
+
+
+def get_by_email(user_email):
+    db_session = SessionDB
+    try:
+        db_session.rollback()
+        result = db_session.query(User).filter(User.email == user_email).first()
+        db_session.close()
+    except InvalidRequestError:
+        db_session.rollback()
+        db_session.close()
+    return result
+

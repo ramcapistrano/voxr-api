@@ -50,4 +50,5 @@ def update(user_id, record_id):
         db_session.close()
         return True
     else:
+	db_session.close()
         return False

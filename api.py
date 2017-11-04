@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 from app.users import UserResource
 from app.users.model import User
+from app.database import SessionDB
 from passlib.hash import bcrypt_sha256
 
 app = Flask(__name__, static_folder='app/static')
@@ -14,11 +15,14 @@ def home():
 
 @app.route("/voxr/api/login", methods=['POST'])
 def login():
+    db_session = SessionDB
     try:
         username = request.json["username"]
         password = request.json["password"]
-
+	
+	db_session.rollback()
         user = User.query.filter_by(username=username).first()
+	db_session.close()
         if user is not None:
             is_password_matched = bcrypt_sha256.verify(password, user.password)
             if is_password_matched is True:
@@ -29,9 +33,13 @@ def login():
 
         return jsonify('User do not exist'), 400
     except KeyError as ke:
+	db_session.rollback()
+        db_session.close()
         return jsonify('Attribute ' + ke.args[0] + ' missing!'), 400
+    except InvalidRequestError:
+        db_session.rollback()
+        db_session.close()
 
 
 if __name__ == '__main__':
-    # app.run(debug=True, host='localhost', port=5001, threaded=True)
-    app.run(debug=True, host='0.0.0.0', port=9000, threaded=True)
+    app.run(debug=True, host='localhost', threaded=True)
