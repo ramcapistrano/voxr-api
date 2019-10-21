@@ -37,5 +37,5 @@ six==1.11.0
 SQLAlchemy==1.1.14
 twilio==6.7.1
 urllib3==1.22
-Werkzeug==0.12.2
+Werkzeug==0.15.3
 zope.interface==4.4.3
